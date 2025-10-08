@@ -75,8 +75,8 @@ pipeline {
                 
                 // Example deployment step (replace with your actual rsync/scp/S3 command):
                 // This simulates copying the files using rsync/ssh to the DEPLOY_PATH
-                sh "echo rsync -avz ${WEBSITE_SOURCE}/* user@webserver.com:${DEPLOY_PATH}/"
-                sh "echo 'Deployment simulation complete for ${params.TARGET_ENVIRONMENT}'"
+                bat "echo rsync -avz ${WEBSITE_SOURCE}/* user@webserver.com:${DEPLOY_PATH}/"
+                bat "echo 'Deployment simulation complete for ${params.TARGET_ENVIRONMENT}'"
             }
         }
     }
