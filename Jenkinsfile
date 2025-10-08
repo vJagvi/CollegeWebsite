@@ -90,7 +90,7 @@ pipeline {
                   wait: true, 
                   propagate: true
                   
-            echo "Downstream job triggered successfully."
+            echo "Downstream job triggered successfully now."
         }
         failure {
             echo "❌ Pipeline failed during validation, archiving, or deployment to ${params.TARGET_ENVIRONMENT}."
