@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="description" content="ABC College - Admissions" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ABC College | Admissions</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    section {
+      display: grid;
+    }
+
+    
+  </style>
+</head>
+<body>
+<header>
+  <img src="assets/logo.png" alt="ABC College Logo" width="56" height="56" />
+  <h1>ABC College</h1>
+  <nav>
+    <a href="index.html">Home</a> |
+    <a href="about.html">About</a> |
+    <a href="departments.html">Departments</a> |
+    <a href="courses.html">Courses</a> |
+    <a href="admissions.html">Admissions</a> |
+    <a href="events.html">Events</a> |
+    <a href="placements.html">Placements</a> |
+    <a href="faculty.html">Faculty</a> |
+    <a href="contact.html">Contact</a>
+  </nav>
+  <hr />
+</header>
+
+<main>
+  <section>
+    <h2>Admissions 2025</h2>
+    <!-- TODO(13): Insert process image exactly -->
+    <img src="assets\admissions_steps.jpg" alt="Admission Process">
+    <!-- TODO(13A) -->
+    <p>Applications are invited for UG and PG programs. Read instructions carefully.</p>
+  </section>
+
+  <section>
+    <h2>Application Form</h2>
+    <form action="submit_application.html" method="post">
+      <!-- TODO(14): Add fieldset Personal Details -->
+      <!-- TODO(14A) -->
+      <!-- TODO(14B) -->
+      <!-- TODO(14C) -->
+      <fieldset>
+        <legend>Personal Details</legend>
+
+        <label for="name">Full Name:</label><br>
+        <input type="text" id="name" name="name" required><br><br>
+
+        <label for="email">Email:</label><br>
+        <input type="email" id="email" name="email" required><br><br>
+
+        <label for="phone">Phone Number:</label><br>
+        <input type="tel" id="phone" name="phone" required><br><br>
+      </fieldset>
+
+      <!-- TODO(15): Add fieldset Program Preferences (select + datalist) -->
+      <!-- TODO(15A) -->
+      <!-- TODO(15B) -->
+      <fieldset>
+        <legend>Program Preferences</legend>
+
+        <label for="program">Select Program:</label><br>
+        <select id="program" name="program" required>
+            <option value="cse">CSE</option>
+            <option value="ece">ECE</option>
+            <option value="civil">CIVIL</option>
+            <option value="mechanical">MECHANICAL</option>
+        </select><br><br>
+
+        <label for="intake">Preferred Intake:</label><br>
+        <input list="intake-options" id="intake" name="intake" required>
+        <datalist id="intake-options">
+            <option value="January 2026">
+            <option value="July 2026">
+        </datalist><br><br>
+      </fieldset>
+
+      <!-- TODO(16): Add fieldset Other Info (number, checkbox, file) -->
+      <!-- TODO(16A) -->
+      <!-- TODO(16B) -->
+      <!-- TODO(16C) -->
+      <fieldset>
+        <legend>Other Info</legend>
+
+        <label for="score">Entrance Exam Score:</label><br>
+        <input type="number" id="score" name="score" min="0" max="100000" required><br><br>
+
+        <label for="hostel">Hostel Required:</label>
+        <input type="checkbox" id="hostel" name="hostel"><br><br>
+
+        <label for="resume">Upload Resume:</label><br>
+        <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" required><br><br>
+      </fieldset>
+
+      <!-- TODO(17): Add submit and reset buttons -->
+      <!-- TODO(17A) -->
+      <!-- TODO(17B) -->
+      <input class="btn" type="submit" value="Submit Application">
+      <input class="btn" type="reset" value="Reset Form">
+      
+    </form>
+  </section>
+
+  <section>
+    <h2>Application Progress</h2>
+    <!-- TODO(18): Add progress and meter exactly -->
+    <!-- TODO(18A) -->
+    <label for="application-progress">Application Progress:</label><br>
+        <progress id="application-progress" value="30" max="100">30%</progress><br><br>
+
+        <label for="seat-filling">Seat Filling Status:</label><br>
+        <meter id="seat-filling" value="55" min="0" max="100">65%</meter>
+    <!-- TODO(18B) -->
+  </section>
+</main>
+
+<footer>
+  <hr />
+  <address>ABC College, Knowledge Avenue, Hyderabad, India • +91-40-1234-5678</address>
+  <p>&copy; 2025 ABC College. All rights reserved.</p>
+</footer>
+</body>
+</html>

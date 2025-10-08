@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="description" content="ABC College - Departments" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ABC College | Departments</title>
+  <link rel="stylesheet" href="styles.css">
+
+  <style>
+    .container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 2rem;
+      align-items: center;
+    }
+
+    .dpts {
+      width: 1fr;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid blue;
+      filter: grayscale(100%);
+      transition: filter 0.4s ease, transform 0.3s ease;
+      margin-bottom: 2rem;
+    }
+    .dpts:hover {
+      filter: grayscale(0%);
+      transform: scale(1.03); 
+    }
+  </style>
+</head>
+<body>
+<header>
+  <img src="assets/logo.png" alt="ABC College Logo" width="56" height="56" />
+  <h1>ABC College</h1>
+  <nav>
+    <a href="index.html">Home</a> |
+    <a href="about.html">About</a> |
+    <a href="departments.html">Departments</a> |
+    <a href="courses.html">Courses</a> |
+    <a href="admissions.html">Admissions</a> |
+    <a href="events.html">Events</a> |
+    <a href="placements.html">Placements</a> |
+    <a href="faculty.html">Faculty</a> |
+    <a href="contact.html">Contact</a>
+  </nav>
+  <hr />
+</header>
+
+<main>
+  <section>
+    <h2>Departments</h2>
+    <ul>
+      <!-- TODO(7): Add six <li> exactly as specified -->
+      <!-- TODO(7A) --><!-- TODO(7B) --><!-- TODO(7C) -->
+      <li>CSE</li>
+      <li>ECE</li>
+      <li>Mechanical</li>
+      <li>Civil</li>
+      <li>Biotechnology</li>
+      <li>Management</li>
+      <!-- TODO(7D) --><!-- TODO(7E) --><!-- TODO(7F) -->
+      
+    </ul>
+  </section>
+
+  <section>
+    <h2 class="container">Department Gallery</h2>
+    <!-- TODO(8): Add six figures with images exactly as specified -->
+    <!-- TODO(8A) --><!-- TODO(8B) --><!-- TODO(8C) -->
+    <img class="dpts" src="assets\dept_cse.jpg">
+    <img class="dpts" src="assets\dept_ece.jpg">
+    <img class="dpts" src="assets\dept_me.jpg">
+    <img class="dpts" src="assets\dept_civil.jpg">
+    <img class="dpts" src="assets\dept_biotech.jpg">
+    <img class="dpts" src="assets\dept_mgmt.jpg">
+    <!-- TODO(8D) --><!-- TODO(8E) --><!-- TODO(8F) -->
+  </section>
+
+  <section>
+    <h2>Labs & Facilities</h2>
+    <dl>
+      <!-- TODO(9): Add three dt/dd pairs exactly as specified -->
+      <!-- TODO(9A) --><!-- TODO(9B) --><!-- TODO(9C) -->
+      <dt>Computing Labs</dt>
+      <dd>Excellent computing hardware and software</dd>
+
+      <dt>Electronics Labs</dt>
+      <dd>World class electronics ports and equipment</dd>
+
+      <dt>Mechanical Labs</dt>
+      <dd>Best equipment overall</dd>
+
+    </dl>
+  </section>
+</main>
+
+<footer>
+  <hr />
+  <address>ABC College, Knowledge Avenue, Hyderabad, India • +91-40-1234-5678</address>
+  <p>&copy; 2025 ABC College. All rights reserved.</p>
+</footer>
+</body>
+</html>

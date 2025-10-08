@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="description" content="ABC College - Faculty" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ABC College | Faculty</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .card {
+      display: grid;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      margin: 1rem auto;
+  
+    }
+    
+    .faculty-photo {
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+  margin-bottom: 0.75rem;
+  position: relative;
+  display: block;
+  transition: transform 0.4s ease;
+}
+
+.faculty-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(0, 123, 255, 0.5), rgba(255, 0, 150, 0.5));
+  mix-blend-mode: overlay;
+  opacity: 0;
+  transition: opacity 0.4s ease, background 0.6s ease;
+}
+
+.faculty-photo:hover::after {
+  opacity: 1;
+  background: linear-gradient(135deg, rgba(255, 165, 0, 0.6), rgba(0, 200, 255, 0.6));
+}
+
+.faculty-photo:hover {
+  transform: scale(1.05);
+}
+  </style>
+</head>
+<body>
+<header>
+  <img src="assets/logo.png" alt="ABC College Logo" width="56" height="56" />
+  <h1>ABC College</h1>
+  <nav>
+    <a href="index.html">Home</a> |
+    <a href="about.html">About</a> |
+    <a href="departments.html">Departments</a> |
+    <a href="courses.html">Courses</a> |
+    <a href="admissions.html">Admissions</a> |
+    <a href="events.html">Events</a> |
+    <a href="placements.html">Placements</a> |
+    <a href="faculty.html">Faculty</a> |
+    <a href="contact.html">Contact</a>
+  </nav>
+  <hr />
+</header>
+
+<main>
+  <section>
+    <h2>Faculty Directory</h2>
+  
+    <!-- TODO(24): Add Principal card exactly -->
+    <div class="card">
+      <img src="assets\principalimg.jpg" alt="Principal" class="faculty-photo">
+      <h3>Dr. Latha Shankar</h3>
+      <p>Principal</p>
+      <p>Holds a PHD in Computer Science and has attended several International Conferences so as to impart the best education to the students.</p>
+      <a href="mailto:principal@college.edu">principal@college.edu</a>
+    </div>
+    <!-- TODO(24A) -->
+  
+    <!-- TODO(25): Add HoD CSE card exactly -->
+    <div class="card">
+      <img src="assets\hod_photo.jpg" alt="Head of CSE" class="faculty-photo">
+      <h3>Prof. Vanitha Anil</h3>
+      <p>Head of Department, CSE</p>
+      <p>Holds a Master's Degree in Computer Applications and have mentored trainers and students efficiently for 15 years.</p>
+      <a href="mailto:hodcse@college.edu">hodcse@college.edu</a>
+    </div>
+    <!-- TODO(25A) -->
+  
+  </section>
+  
+</main>
+
+<footer>
+  <hr />
+  <address>ABC College, Knowledge Avenue, Hyderabad, India • +91-40-1234-5678</address>
+  <p>&copy; 2025 ABC College. All rights reserved.</p>
+</footer>
+</body>
+</html>
