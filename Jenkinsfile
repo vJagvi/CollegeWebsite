@@ -73,8 +73,7 @@ pipeline {
                     }
                 }
                 
-                // Example deployment step (replace with your actual rsync/scp/S3 command):
-                // This simulates copying the files using rsync/ssh to the DEPLOY_PATH
+                // Example deployment step (using 'bat' for Windows compatibility):
                 bat "echo rsync -avz ${WEBSITE_SOURCE}/* user@webserver.com:${DEPLOY_PATH}/"
                 bat "echo 'Deployment simulation complete for ${params.TARGET_ENVIRONMENT}'"
             }
@@ -84,7 +83,14 @@ pipeline {
     // 3. POST: Defines actions that run after the pipeline is complete
     post {
         success {
-            echo "✅ Pipeline for ${params.TARGET_ENVIRONMENT} completed successfully."
+            echo "✅ CI Pipeline completed successfully. Triggering Downstream CD Job..."
+            
+            // 💡 NEW LOGIC: Trigger the Downstream job named 'ClgWebs-Deployment-Job'
+            build job: 'ClgWebs-Deployment-Job', 
+                  wait: true, 
+                  propagate: true
+                  
+            echo "Downstream job triggered successfully."
         }
         failure {
             echo "❌ Pipeline failed during validation, archiving, or deployment to ${params.TARGET_ENVIRONMENT}."
