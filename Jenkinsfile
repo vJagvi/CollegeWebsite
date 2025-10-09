@@ -1,4 +1,10 @@
 // Jenkinsfile for a Static HTML/CSS Website
+
+// FINAL UPDATE: Using the Shared Library
+// 💡 STEP 1: Load the shared library configured globally in Jenkins.
+// Syntax: @Library('<LibraryName>@<Version/Branch>') _
+@Library('my-cicd-library@main') _ 
+
 pipeline {
     // 1. AGENT: Use any available Jenkins agent
     agent any
@@ -51,31 +57,14 @@ pipeline {
             }
         }
 
-        // 💡 NEW STAGE: Handles the deployment logic
-        stage('Deploy Site') {
-            // Deployments often require caution, especially for production
-            options {
-                // Timeout the deployment if it takes longer than 10 minutes
-                timeout(time: 10, unit: 'MINUTES')
-            }
+        // 💡 UPDATED STAGE: Now calls the reusable function from the shared library
+        stage('Deploy Site via Library') {
             steps {
-                echo "Starting deployment to the target environment: ${params.TARGET_ENVIRONMENT}"
-                echo "Deployment Path: ${DEPLOY_PATH}"
+                echo "Delegating deployment to reusable 'customDeploy' function from the Shared Library."
                 
-                // --- Conditional logic based on the selected parameter ---
-                script {
-                    if (params.TARGET_ENVIRONMENT == 'prod') {
-                        // Production deployments should ideally require a manual approval step
-                        // input(message: "Deploying to PRODUCTION. Click 'Proceed' to confirm.", submitter: 'admin,ops-team')
-                        echo "!!! Production deployment is commencing. This would be your real SCP/S3 sync command."
-                    } else {
-                        echo "Deploying to non-production environment."
-                    }
-                }
-                
-                // Example deployment step (using 'bat' for Windows compatibility):
-                bat "echo rsync -avz ${WEBSITE_SOURCE}/* user@webserver.com:${DEPLOY_PATH}/"
-                bat "echo 'Deployment simulation complete for ${params.TARGET_ENVIRONMENT}'"
+                // 💡 STEP 2: Call the customDeploy function, passing environment and path.
+                // The actual complex deployment logic is now hidden inside the library file.
+                customDeploy(params.TARGET_ENVIRONMENT, DEPLOY_PATH)
             }
         }
     }
@@ -85,15 +74,15 @@ pipeline {
         success {
             echo "✅ CI Pipeline completed successfully. Triggering Downstream CD Job..."
             
-            // 💡 NEW LOGIC: Trigger the Downstream job named 'ClgWebs-Deployment-Job'
+            // Trigger the Downstream job named 'ClgWebs-Deployment-Job'
             build job: 'ClgWebs-Deployment-Job', 
-                  wait: true, 
-                  propagate: true
-                  
+                     wait: true, 
+                     propagate: true
+                     
             echo "Downstream job triggered successfully."
         }
         failure {
-            echo "❌ Pipeline failed during validation, archiving, or deployment to ${params.TARGET_ENVIRONMENT}."
+            echo "❌ Pipeline failed during execution."
         }
         always {
             // Clean up the workspace on the agent machine
