@@ -32,7 +32,7 @@ pipeline {
             steps {
                 // Fetches the files from the configured Git repository branch
                 checkout scm 
-                echo 'hi Source code checked out successfully now.'
+                echo 'hi hi Source code checked out successfully now.'
             }
         }
         
