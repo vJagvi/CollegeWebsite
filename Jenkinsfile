@@ -2,14 +2,14 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "your-dockerhub-username/static-website"
+        IMAGE_NAME = "vjagvi/college-website"
     }
 
     stages {
         stage('Clone Repository') {
             steps {
                 echo '📦 Cloning repository...'
-                git branch: 'main', url: 'https://github.com/yourusername/your-repo.git'
+                git branch: 'main', url: 'https://github.com/vJagvi/CollegeWebsite.git'
             }
         }
 
