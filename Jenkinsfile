@@ -16,7 +16,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo '🐳 Building Docker image...'
-                sh 'docker build -t $IMAGE_NAME:latest .'
+                bat 'docker build -t %IMAGE_NAME%:latest .'
             }
         }
 
@@ -24,10 +24,10 @@ pipeline {
             steps {
                 echo '🚢 Pushing image to Docker Hub...'
                 withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKERHUB_TOKEN')]) {
-                    sh '''
-                    echo "$DOCKERHUB_TOKEN" | docker login -u your-dockerhub-username --password-stdin
-                    docker push $IMAGE_NAME:latest
-                    '''
+                    bat """
+                    echo %DOCKERHUB_TOKEN% | docker login -u your-dockerhub-username --password-stdin
+                    docker push %IMAGE_NAME%:latest
+                    """
                 }
             }
         }
