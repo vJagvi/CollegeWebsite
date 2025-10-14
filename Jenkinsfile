@@ -21,16 +21,18 @@ pipeline {
         }
 
         stage('Push to Docker Hub') {
-            steps {
-                echo '🚢 Pushing image to Docker Hub... .'
-                withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKERHUB_TOKEN')]) {
-                    bat """
-                    echo %DOCKERHUB_TOKEN% | docker login -u vjagvi --password-stdin
-                    docker push %IMAGE_NAME%:latest
-                    """
-                }
-            }
+    steps {
+        echo '🚢 Pushing image to Docker Hub...'
+        withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKERHUB_TOKEN')]) {
+            // Use -p flag on Windows to avoid --password-stdin issues
+            bat """
+            docker login -u vjagvi -p %DOCKERHUB_TOKEN%
+            docker push %IMAGE_NAME%:latest
+            """
         }
+    }
+}
+
     }
 
     post {
