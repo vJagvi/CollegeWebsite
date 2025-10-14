@@ -25,7 +25,7 @@ pipeline {
                 echo '🚢 Pushing image to Docker Hub...'
                 withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKERHUB_TOKEN')]) {
                     bat """
-                    echo %DOCKERHUB_TOKEN% | docker login -u your-dockerhub-username --password-stdin
+                    echo %DOCKERHUB_TOKEN% | docker login -u vjagvi --password-stdin
                     docker push %IMAGE_NAME%:latest
                     """
                 }
