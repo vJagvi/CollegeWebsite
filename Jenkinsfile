@@ -5,6 +5,7 @@ pipeline {
         IMAGE_NAME = "vjagvi/college-website"
         ECR_REPO = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website"
         REGION = "us-east-1"
+        AWS_CLI = "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe"
     }
 
     stages {
@@ -17,7 +18,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                echo '🐳 Building Docker image....'
+                echo '🐳 Building Docker image...'
                 bat 'docker build -t %IMAGE_NAME%:latest .'
             }
         }
@@ -41,7 +42,7 @@ pipeline {
                     bat """
                     set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
                     set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
-                    aws ecr get-login-password --region %REGION% | docker login --username AWS --password-stdin %ECR_REPO%
+                    "%AWS_CLI%" ecr get-login-password --region %REGION% | docker login --username AWS --password-stdin %ECR_REPO%
                     docker tag %IMAGE_NAME%:latest %ECR_REPO%:latest
                     docker push %ECR_REPO%:latest
                     """
