@@ -1,5 +1,3 @@
-# variables.tf
-
 variable "region" {
   description = "AWS region to deploy resources"
   default     = "us-east-1"
@@ -7,7 +5,7 @@ variable "region" {
 
 variable "instance_type" {
   description = "EC2 instance type"
-  default     = "t2.micro"
+  default     = "t3.micro"   # changed from t2.micro
 }
 
 variable "key_name" {

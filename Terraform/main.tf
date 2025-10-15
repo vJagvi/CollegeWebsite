@@ -1,5 +1,3 @@
-# main.tf
-
 provider "aws" {
   region = var.region
 }
@@ -23,7 +21,7 @@ data "aws_ami" "amazon_linux" {
 
 # Security Group for EC2
 resource "aws_security_group" "web_sg" {
-  name        = "jenkins-ec2-sg"
+  name        = var.security_group_name
   description = "Allow HTTP and SSH"
 
   ingress {
@@ -51,9 +49,9 @@ resource "aws_security_group" "web_sg" {
 # EC2 Instance
 resource "aws_instance" "web" {
   ami                    = data.aws_ami.amazon_linux.id
-  instance_type           = var.instance_type
-  key_name                = var.key_name
-  security_groups         = [aws_security_group.web_sg.name]
+  instance_type          = var.instance_type
+  key_name               = var.key_name
+  security_groups        = [aws_security_group.web_sg.name]
 
   user_data = <<-EOF
               #!/bin/bash
@@ -69,4 +67,3 @@ resource "aws_instance" "web" {
     Name = "CollegeWebsite-EC2"
   }
 }
-
