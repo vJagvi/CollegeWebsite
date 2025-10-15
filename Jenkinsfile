@@ -6,6 +6,7 @@ pipeline {
         ECR_REPO = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website"
         REGION = "us-east-1"
         AWS_CLI = "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe"
+        TERRAFORM_PATH = "C:\\terraform_1.13.3_windows_386\\terraform.exe" // full path to terraform.exe
     }
 
     stages {
@@ -56,8 +57,8 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'aws-ecr-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                     dir('terraform') {
                         bat """
-                        terraform init
-                        terraform apply -auto-approve
+                        "%TERRAFORM_PATH%" init
+                        "%TERRAFORM_PATH%" apply -auto-approve
                         """
                     }
                 }
