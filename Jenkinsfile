@@ -49,14 +49,28 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy with Terraform') {
+            steps {
+                echo '🏗️ Deploying EC2 instance and running Docker container...'
+                withCredentials([usernamePassword(credentialsId: 'aws-ecr-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    dir('terraform') {
+                        bat """
+                        terraform init
+                        terraform apply -auto-approve
+                        """
+                    }
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo '✅ Docker image built and pushed to Docker Hub and ECR successfully!'
+            echo '✅ Docker image pushed and EC2 deployed successfully!'
         }
         failure {
-            echo '❌ Build failed!'
+            echo '❌ Build or deploy failed!'
         }
     }
 }
