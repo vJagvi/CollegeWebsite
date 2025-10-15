@@ -1,19 +1,24 @@
+# main.tf
+
 provider "aws" {
   region = var.region
 }
 
-variable "region" {}
-variable "ecr_repo_url" {}
-variable "instance_type" {}
-variable "key_name" {}
-
+# Security Group allowing HTTP and SSH
 resource "aws_security_group" "web_sg" {
-  name        = "allow_http"
-  description = "Allow HTTP inbound traffic"
+  name        = var.security_group_name
+  description = "Allow HTTP and SSH"
 
   ingress {
     from_port   = 80
     to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -26,35 +31,24 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-resource "aws_instance" "web_server" {
-  ami           = "ami-0c02fb55956c7d316" # Amazon Linux 2 in us-east-1
-  instance_type = var.instance_type
-  key_name      = var.key_name
-  vpc_security_group_ids = [aws_security_group.web_sg.id]
+# EC2 instance
+resource "aws_instance" "web" {
+  ami                    = "ami-0c55b159cbfafe1f0" # Amazon Linux 2 AMI
+  instance_type           = var.instance_type
+  key_name                = var.key_name
+  security_groups         = [aws_security_group.web_sg.name]
 
   user_data = <<-EOF
-    #!/bin/bash
-    yum update -y
-    yum install -y docker
-    systemctl start docker
-    systemctl enable docker
-    amazon-linux-extras install -y awscli
-
-    # Login to ECR and pull image
-    REGION=${var.region}
-    REPO=${var.ecr_repo_url}
-
-    $(aws ecr get-login --no-include-email --region ${var.region})
-
-    docker pull ${var.ecr_repo_url}:latest
-    docker run -d -p 80:80 ${var.ecr_repo_url}:latest
-  EOF
+              #!/bin/bash
+              yum update -y
+              amazon-linux-extras install docker -y
+              service docker start
+              usermod -a -G docker ec2-user
+              docker login -u AWS -p $(aws ecr get-login-password --region ${var.region}) ${var.ecr_repo_url}
+              docker run -d -p 80:80 ${var.ecr_repo_url}
+              EOF
 
   tags = {
     Name = "CollegeWebsite-EC2"
   }
-}
-
-output "public_ip" {
-  value = aws_instance.web_server.public_ip
 }

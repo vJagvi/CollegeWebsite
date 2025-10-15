@@ -1,15 +1,26 @@
-variable "region" {
-  default = "us-east-1"
-}
+# variables.tf
 
-variable "ecr_repo_url" {
-  default = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website"
+variable "region" {
+  description = "AWS region to deploy resources"
+  default     = "us-east-1"
 }
 
 variable "instance_type" {
-  default = "t2.micro"
+  description = "EC2 instance type"
+  default     = "t2.micro"
 }
 
 variable "key_name" {
-  default = "my-ec2-key"  # Replace this with your EC2 keypair name in AWS
+  description = "Existing EC2 key pair name"
+  default     = "my-keypair"
+}
+
+variable "ecr_repo_url" {
+  description = "ECR repository URL of the Docker image"
+  default     = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website:latest"
+}
+
+variable "security_group_name" {
+  description = "Security group name for EC2 instance"
+  default     = "jenkins-ec2-sg"
 }
