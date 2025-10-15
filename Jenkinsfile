@@ -51,18 +51,6 @@ pipeline {
             }
         }
 
-        stage('Deploy to S3') {
-            steps {
-                echo '☁️ Deploying website to AWS S3...'
-                withCredentials([usernamePassword(credentialsId: 'aws-ecr-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    bat """
-                    set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
-                    set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
-                    "%AWS_CLI%" s3 sync . s3://%S3_BUCKET% --delete --region %REGION%
-                    """
-                }
-            }
-        }
     }
 
     post {
