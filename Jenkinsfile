@@ -19,10 +19,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo '🐳 Building Docker image...'
-                bat '''
-                @echo off
-                docker build -t %IMAGE_NAME%:latest .
-                '''
+                bat 'docker build -t %IMAGE_NAME%:latest .'
             }
         }
 
@@ -30,11 +27,10 @@ pipeline {
             steps {
                 echo '🚢 Pushing image to Docker Hub...'
                 withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKERHUB_TOKEN')]) {
-                    bat '''
-                    @echo off
+                    bat """
                     docker login -u vjagvi -p %DOCKERHUB_TOKEN%
                     docker push %IMAGE_NAME%:latest
-                    '''
+                    """
                 }
             }
         }
@@ -43,14 +39,13 @@ pipeline {
             steps {
                 echo '🚀 Pushing image to AWS ECR...'
                 withCredentials([usernamePassword(credentialsId: 'aws-ecr-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    bat '''
-                    @echo off
+                    bat """
                     set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
                     set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
                     "%AWS_CLI%" ecr get-login-password --region %REGION% | docker login --username AWS --password-stdin %ECR_REPO%
                     docker tag %IMAGE_NAME%:latest %ECR_REPO%:latest
                     docker push %ECR_REPO%:latest
-                    '''
+                    """
                 }
             }
         }
@@ -58,10 +53,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Docker images pushed to Docker Hub and AWS ECR successfully!'
+            echo '✅ Docker image built and pushed to Docker Hub and ECR successfully!'
         }
         failure {
-            echo '❌ Build or deployment failed!'
+            echo '❌ Build failed!'
         }
     }
 }
