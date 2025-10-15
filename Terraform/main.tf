@@ -4,21 +4,38 @@ provider "aws" {
   region = var.region
 }
 
-# Security Group allowing HTTP and SSH
+# Fetch the latest Amazon Linux 2 AMI
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["amazon"]
+}
+
+# Security Group for EC2
 resource "aws_security_group" "web_sg" {
-  name        = var.security_group_name
+  name        = "jenkins-ec2-sg"
   description = "Allow HTTP and SSH"
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = 22
+    to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    from_port   = 22
-    to_port     = 22
+    from_port   = 80
+    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -31,9 +48,9 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-# EC2 instance
+# EC2 Instance
 resource "aws_instance" "web" {
-  ami                    = "ami-0c55b159cbfafe1f0" # Amazon Linux 2 AMI
+  ami                    = data.aws_ami.amazon_linux.id
   instance_type           = var.instance_type
   key_name                = var.key_name
   security_groups         = [aws_security_group.web_sg.name]
@@ -52,3 +69,4 @@ resource "aws_instance" "web" {
     Name = "CollegeWebsite-EC2"
   }
 }
+
