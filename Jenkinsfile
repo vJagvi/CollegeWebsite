@@ -55,23 +55,7 @@ pipeline {
             }
         }
 
-        stage('Wait for EC2 and Check Website') {
-            steps {
-                echo '⏳ Waiting 90 seconds for EC2 to initialize...'
-                bat 'timeout /t 90 /nobreak > nul'
-
-                script {
-                    dir('terraform') {
-                        def publicIp = bat(script: "\"%TERRAFORM%\" output -raw ec2_public_ip", returnStdout: true).trim()
-                        echo "🌍 EC2 Public IP: ${publicIp}"
-
-                        echo "🔎 Checking website health..."
-                        // Use curl or PowerShell to check HTTP response
-                        bat "powershell -Command \"Invoke-WebRequest -Uri http://${publicIp} -UseBasicParsing | Select-Object -ExpandProperty StatusCode\""
-                    }
-                }
-            }
-        }
+        
     }
 
     post {
