@@ -6,7 +6,7 @@ pipeline {
         ECR_REPO = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website"
         REGION = "us-east-1"
         AWS_CLI = "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe"
-        TERRAFORM_PATH = "C:\\terraform_1.13.3_windows_386\\terraform.exe" // full path to terraform.exe
+        TERRAFORM = "C:\\terraform_1.13.3_windows_386\\terraform.exe"
     }
 
     stages {
@@ -21,18 +21,6 @@ pipeline {
             steps {
                 echo '🐳 Building Docker image...'
                 bat 'docker build -t %IMAGE_NAME%:latest .'
-            }
-        }
-
-        stage('Push to Docker Hub') {
-            steps {
-                echo '🚢 Pushing image to Docker Hub...'
-                withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKERHUB_TOKEN')]) {
-                    bat """
-                    docker login -u vjagvi -p %DOCKERHUB_TOKEN%
-                    docker push %IMAGE_NAME%:latest
-                    """
-                }
             }
         }
 
@@ -57,9 +45,28 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'aws-ecr-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                     dir('terraform') {
                         bat """
-                        "%TERRAFORM_PATH%" init
-                        "%TERRAFORM_PATH%" apply -auto-approve
+                        set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                        set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+                        "%TERRAFORM%" init
+                        "%TERRAFORM%" apply -auto-approve
                         """
+                    }
+                }
+            }
+        }
+
+        stage('Wait for EC2 and Check Website') {
+            steps {
+                echo '⏳ Waiting 90 seconds for EC2 to initialize...'
+                bat 'timeout /t 90'
+
+                script {
+                    dir('terraform') {
+                        def publicIp = bat(script: "\"%TERRAFORM%\" output -raw ec2_public_ip", returnStdout: true).trim()
+                        echo "🌍 EC2 Public IP: ${publicIp}"
+
+                        echo "🔎 Checking website health..."
+                        bat "curl -I http://${publicIp}"
                     }
                 }
             }
@@ -68,10 +75,11 @@ pipeline {
 
     post {
         success {
-            echo '✅ Docker image pushed and EC2 deployed successfully!'
+            echo '✅ Docker image pushed, EC2 deployed, and website is running!'
+            echo '🎉 Open the site in your browser using the EC2 Public IP or DNS.'
         }
         failure {
-            echo '❌ Build or deploy failed!'
+            echo '❌ Build or deployment failed!'
         }
     }
 }
