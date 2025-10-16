@@ -1,24 +1,19 @@
-variable "region" {
-  description = "AWS region to deploy resources"
+variable "aws_region" {
+  description = "AWS Region to deploy resources"
   default     = "us-east-1"
 }
 
-variable "instance_type" {
+variable "ec2_instance_type" {
   description = "EC2 instance type"
-  default     = "t3.micro"
+  default     = "t2.micro"
 }
 
 variable "key_name" {
-  description = "Existing EC2 key pair name"
-  default     = "my-keypair"
+  description = "EC2 key pair name"
+  type        = string
 }
 
-variable "ecr_repo_url" {
-  description = "ECR repository URL of the Docker image"
-  default     = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website:latest"
-}
-
-variable "security_group_name" {
-  description = "Security group name for EC2 instance"
-  default     = "jenkins-ec2-sg"
+variable "ecr_repo" {
+  description = "ECR repository URI with tag"
+  type        = string
 }

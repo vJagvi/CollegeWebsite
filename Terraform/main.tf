@@ -1,57 +1,32 @@
 provider "aws" {
-  region = var.region
+  region = var.aws_region
 }
 
-# ------------------------------
-# IAM Role for EC2 to Access ECR
-# ------------------------------
-resource "aws_iam_role" "ec2_role" {
-  name = "ec2-ecr-access-role"
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      }
-    }]
-  })
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
 }
 
-resource "aws_iam_role_policy_attachment" "ecr_readonly_attach" {
-  role       = aws_iam_role.ec2_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-}
-
-resource "aws_iam_role_policy_attachment" "ssm_attach" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-  role       = "ec2-ecr-access-role"
-}
-
-resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "ec2-instance-profile"
-  role = aws_iam_role.ec2_role.name
-}
-
-# ------------------------------
-# Security Group
-# ------------------------------
+# Security Group allowing HTTP & SSH
 resource "aws_security_group" "web_sg" {
-  name        = var.security_group_name
-  description = "Allow HTTP and SSH"
+  name        = "jenkins-ec2-sg"
+  description = "Allow HTTP and SSH traffic"
 
   ingress {
-    from_port   = 22
-    to_port     = 22
+    from_port   = 80
+    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = 22
+    to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -68,52 +43,58 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-# ------------------------------
-# Latest Amazon Linux 2 AMI
-# ------------------------------
-data "aws_ami" "amazon_linux" {
-  most_recent = true
+# IAM Role for EC2 to access ECR and SSM
+resource "aws_iam_role" "ec2_role" {
+  name = "ec2-ecr-access-role"
 
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-
-  owners = ["amazon"]
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+    }]
+  })
 }
 
-# ------------------------------
+resource "aws_iam_role_policy_attachment" "ecr_readonly_attach" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_attach" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "ec2-instance-profile"
+  role = aws_iam_role.ec2_role.name
+}
+
 # EC2 Instance
-# ------------------------------
 resource "aws_instance" "web" {
-  ami                    = data.aws_ami.amazon_linux.id
-  instance_type           = var.instance_type
-  key_name                = var.key_name
-  iam_instance_profile    = aws_iam_instance_profile.ec2_profile.name
-  security_groups         = [aws_security_group.web_sg.name]
+  ami                  = data.aws_ami.amazon_linux.id
+  instance_type        = var.ec2_instance_type
+  security_groups      = [aws_security_group.web_sg.name]
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+  key_name             = var.key_name
 
-  user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              amazon-linux-extras install docker -y
-              systemctl enable docker
-              systemctl start docker
-              usermod -a -G docker ec2-user
+  user_data = <<-EOT
+    #!/bin/bash
+    yum update -y
+    amazon-linux-extras install docker -y
+    systemctl enable docker
+    systemctl start docker
+    usermod -a -G docker ec2-user
 
-              # Login to ECR and pull image
-              REGION=${var.region}
-              REPO=${var.ecr_repo_url}
-              aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO
-              docker pull $REPO
+    REGION=${var.aws_region}
+    REPO=${var.ecr_repo}
 
-              # Run container
-              docker run -d -p 80:80 $REPO
-              EOF
+    aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO
+    docker pull $REPO
+    docker run -d -p 80:80 $REPO
+  EOT
 
   tags = {
     Name = "CollegeWebsite-EC2"
