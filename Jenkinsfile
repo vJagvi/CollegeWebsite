@@ -3,10 +3,10 @@ pipeline {
 
     environment {
         IMAGE_NAME = "vjagvi/college-website"
-        ECR_REPO = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website"
-        REGION = "us-east-1"
-        AWS_CLI = "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe"
-        TERRAFORM = "C:\\terraform_1.13.3_windows_386\\terraform.exe"
+        ECR_REPO   = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website"
+        REGION     = "us-east-1"
+        AWS_CLI    = "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe"
+        TERRAFORM  = "C:\\terraform_1.13.3_windows_386\\terraform.exe"
     }
 
     stages {
@@ -88,10 +88,10 @@ pipeline {
 
     environment {
         IMAGE_NAME = "vjagvi/college-website"
-        ECR_REPO = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website"
-        REGION = "us-east-1"
-        AWS_CLI = "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe"
-        TERRAFORM = "C:\\terraform_1.13.3_windows_386\\terraform.exe"
+        ECR_REPO   = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website"
+        REGION     = "us-east-1"
+        AWS_CLI    = "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe"
+        TERRAFORM  = "C:\\terraform_1.13.3_windows_386\\terraform.exe"
     }
 
     stages {

@@ -99,20 +99,35 @@ resource "aws_instance" "web" {
 
   user_data = <<-EOF
               #!/bin/bash
+              # Update and install Docker
               yum update -y
               amazon-linux-extras install docker -y
+
+              # Enable Docker on boot
               systemctl enable docker
               systemctl start docker
+
+              # Add ec2-user to Docker group
               usermod -a -G docker ec2-user
 
-              # Login to ECR and pull image
+              # Wait for Docker to start
+              sleep 10
+
+              # ECR login, pull image, and run container
               REGION=${var.region}
               REPO=${var.ecr_repo_url}
+
               aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO
               docker pull $REPO
 
+              # Stop existing container if any
+              if [ $(docker ps -q -f name=college-website) ]; then
+                docker stop college-website
+                docker rm college-website
+              fi
+
               # Run container
-              docker run -d -p 80:80 $REPO
+              docker run -d --name college-website -p 80:80 $REPO
               EOF
 
   tags = {
