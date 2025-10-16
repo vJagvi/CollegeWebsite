@@ -2,83 +2,171 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = 'us-east-1'        // Change region if needed
-        ECR_REPO   = '123456789012.dkr.ecr.us-east-1.amazonaws.com/college-website' // Your ECR repo
-        TF_VAR_region = "${AWS_REGION}" // Pass to Terraform
+        IMAGE_NAME = "vjagvi/college-website"
+        ECR_REPO   = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website"
+        REGION     = "us-east-1"
+        AWS_CLI    = "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe"
+        TERRAFORM  = "C:\\terraform_1.13.3_windows_386\\terraform.exe"
     }
 
     stages {
-
-        stage('Checkout') {
+        stage('Clone Repository') {
             steps {
-                git url: 'https://github.com/vJagvi/CollegeWebsite.git', branch: 'main'
+                echo '📦 Cloning repository...'
+                git branch: 'main', url: 'https://github.com/vJagvi/CollegeWebsite.git'
             }
         }
 
-        stage('Build & Push Docker Image') {
+        stage('Build Docker Image') {
             steps {
-                withCredentials([string(credentialsId: 'AWS_SECRET', variable: 'AWS_SECRET_ACCESS_KEY'),
-                                 string(credentialsId: 'AWS_KEY', variable: 'AWS_ACCESS_KEY_ID')]) {
+                echo '🐳 Building Docker image...'
+                bat 'docker build -t %IMAGE_NAME%:latest .'
+            }
+        }
 
-                    sh '''
-                    $(aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO)
-                    docker build -t college-website .
-                    docker tag college-website:latest $ECR_REPO:latest
-                    docker push $ECR_REPO:latest
-                    '''
+        stage('Push to AWS ECR') {
+            steps {
+                echo '🚀 Pushing image to AWS ECR...'
+                withCredentials([usernamePassword(credentialsId: 'aws-ecr-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    bat """
+                    set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                    set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+                    "%AWS_CLI%" ecr get-login-password --region %REGION% | docker login --username AWS --password-stdin %ECR_REPO%
+                    docker tag %IMAGE_NAME%:latest %ECR_REPO%:latest
+                    docker push %ECR_REPO%:latest
+                    """
                 }
             }
         }
 
-        stage('Terraform Init & Apply') {
+        stage('Deploy with Terraform') {
             steps {
-                dir('terraform') { // Terraform code directory
-                    withCredentials([string(credentialsId: 'AWS_SECRET', variable: 'AWS_SECRET_ACCESS_KEY'),
-                                     string(credentialsId: 'AWS_KEY', variable: 'AWS_ACCESS_KEY_ID')]) {
-                        sh '''
-                        terraform init
-                        terraform apply -auto-approve \
-                            -var="aws_region=$AWS_REGION" \
-                            -var="ami_id=ami-052064a798f08f0d3" \
-                            -var="instance_type=t3.micro"
-                        '''
+                echo '🏗️ Deploying EC2 instance and running Docker container...'
+                withCredentials([usernamePassword(credentialsId: 'aws-ecr-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    dir('terraform') {
+                        bat """
+                        set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                        set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+                        "%TERRAFORM%" init
+                        "%TERRAFORM%" apply -auto-approve
+                        """
                     }
                 }
             }
         }
 
-        stage('Wait for EC2 and Deploy Docker') {
+        stage('Wait for EC2 and Check Website') {
             steps {
                 echo '⏳ Waiting 90 seconds for EC2 to initialize...'
-                sleep(time: 90, unit: 'SECONDS')  // Cross-platform
+                bat 'timeout /t 90 /nobreak > nul'
 
-                // Deploy Docker on EC2
-                sh '''
-                EC2_IP=$(terraform output -raw ec2_public_ip)
-                ssh -o StrictHostKeyChecking=no ec2-user@$EC2_IP <<'EOT'
-                    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
-                    docker pull $ECR_REPO:latest
+                script {
+                    dir('terraform') {
+                        def publicIp = bat(script: "\"%TERRAFORM%\" output -raw ec2_public_ip", returnStdout: true).trim()
+                        echo "🌍 EC2 Public IP: ${publicIp}"
 
-                    # Stop existing container if running
-                    if [ $(docker ps -q -f name=college-website) ]; then
-                        docker stop college-website
-                        docker rm college-website
-                    fi
-
-                    # Run container
-                    docker run -d --name college-website -p 80:80 $ECR_REPO:latest
-                EOT
-                '''
+                        echo "🔎 Checking website health..."
+                        // Use curl or PowerShell to check HTTP response
+                        bat "powershell -Command \"Invoke-WebRequest -Uri http://${publicIp} -UseBasicParsing | Select-Object -ExpandProperty StatusCode\""
+                    }
+                }
             }
         }
     }
 
     post {
         success {
-            echo "✅ Deployment completed successfully!"
+            echo '✅ Docker image pushed, EC2 deployed, and website is running!'
+            echo '🎉 Open the site in your browser using the EC2 Public IP or DNS.'
         }
         failure {
-            echo "❌ Build or deployment failed!"
+            echo '❌ Build or deployment failed!'
+        }
+    }
+}
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "vjagvi/college-website"
+        ECR_REPO   = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website"
+        REGION     = "us-east-1"
+        AWS_CLI    = "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe"
+        TERRAFORM  = "C:\\terraform_1.13.3_windows_386\\terraform.exe"
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                echo '📦 Cloning repository...'
+                git branch: 'main', url: 'https://github.com/vJagvi/CollegeWebsite.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo '🐳 Building Docker image...'
+                bat 'docker build -t %IMAGE_NAME%:latest .'
+            }
+        }
+
+        stage('Push to AWS ECR') {
+            steps {
+                echo '🚀 Pushing image to AWS ECR...'
+                withCredentials([usernamePassword(credentialsId: 'aws-ecr-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    bat """
+                    set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                    set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+                    "%AWS_CLI%" ecr get-login-password --region %REGION% | docker login --username AWS --password-stdin %ECR_REPO%
+                    docker tag %IMAGE_NAME%:latest %ECR_REPO%:latest
+                    docker push %ECR_REPO%:latest
+                    """
+                }
+            }
+        }
+
+        stage('Deploy with Terraform') {
+            steps {
+                echo '🏗️ Deploying EC2 instance and running Docker container...'
+                withCredentials([usernamePassword(credentialsId: 'aws-ecr-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    dir('terraform') {
+                        bat """
+                        set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                        set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+                        "%TERRAFORM%" init
+                        "%TERRAFORM%" apply -auto-approve
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Wait for EC2 and Check Website') {
+            steps {
+                echo '⏳ Waiting 90 seconds for EC2 to initialize...'
+                bat 'timeout /t 90 /nobreak > nul'
+
+                script {
+                    dir('terraform') {
+                        def publicIp = bat(script: "\"%TERRAFORM%\" output -raw ec2_public_ip", returnStdout: true).trim()
+                        echo "🌍 EC2 Public IP: ${publicIp}"
+
+                        echo "🔎 Checking website health..."
+                        // Use curl or PowerShell to check HTTP response
+                        bat "powershell -Command \"Invoke-WebRequest -Uri http://${publicIp} -UseBasicParsing | Select-Object -ExpandProperty StatusCode\""
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Docker image pushed, EC2 deployed, and website is running!'
+            echo '🎉 Open the site in your browser using the EC2 Public IP or DNS.'
+        }
+        failure {
+            echo '❌ Build or deployment failed!'
         }
     }
 }
