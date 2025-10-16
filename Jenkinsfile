@@ -1,114 +1,170 @@
 pipeline {
     agent any
+
     environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key')  // Jenkins credentials
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
+        IMAGE_NAME = "vjagvi/college-website"
+        ECR_REPO = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website"
+        REGION = "us-east-1"
+        AWS_CLI = "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe"
+        TERRAFORM = "C:\\terraform_1.13.3_windows_386\\terraform.exe"
     }
+
     stages {
+        stage('Clone Repository') {
+            steps {
+                echo '📦 Cloning repository...'
+                git branch: 'main', url: 'https://github.com/vJagvi/CollegeWebsite.git'
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
-                echo '📦 Building Docker image...'
-                sh 'docker build -t vjagvi/college-website:latest .'
+                echo '🐳 Building Docker image...'
+                bat 'docker build -t %IMAGE_NAME%:latest .'
             }
         }
-        stage('Tag & Push to ECR') {
+
+        stage('Push to AWS ECR') {
             steps {
-                echo '🚀 Pushing Docker image to AWS ECR...'
-                sh '''
-                    docker tag vjagvi/college-website:latest 387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website:latest
-                    aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 387056640483.dkr.ecr.us-east-1.amazonaws.com
-                    docker push 387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website:latest
-                '''
-            }
-        }
-        stage('Deploy with Terraform') {
-            steps {
-                echo '🏗️ Deploying EC2 instance and website...'
-                dir('Terraform') {
-                    sh 'terraform init'
-                    sh 'terraform apply -auto-approve -var "key_name=my-keypair" -var "ecr_repo_url=387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website:latest"'
+                echo '🚀 Pushing image to AWS ECR...'
+                withCredentials([usernamePassword(credentialsId: 'aws-ecr-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    bat """
+                    set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                    set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+                    "%AWS_CLI%" ecr get-login-password --region %REGION% | docker login --username AWS --password-stdin %ECR_REPO%
+                    docker tag %IMAGE_NAME%:latest %ECR_REPO%:latest
+                    docker push %ECR_REPO%:latest
+                    """
                 }
             }
         }
-        stage('Get Public IP & Website URL') {
+
+        stage('Deploy with Terraform') {
             steps {
-                dir('Terraform') {
-                    script {
-                        // Fetch the public IP from Terraform output
-                        def ec2IP = sh(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
-                        echo "🌐 Your website is live at: http://${ec2IP}"
-                        
-                        // Optional: Open in default browser (if Jenkins agent supports GUI)
-                        // bat "start http://${ec2IP}"  // Use on Windows agent
-                        // sh "xdg-open http://${ec2IP}" // Use on Linux agent
+                echo '🏗️ Deploying EC2 instance and running Docker container...'
+                withCredentials([usernamePassword(credentialsId: 'aws-ecr-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    dir('terraform') {
+                        bat """
+                        set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                        set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+                        "%TERRAFORM%" init
+                        "%TERRAFORM%" apply -auto-approve
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Wait for EC2 and Check Website') {
+            steps {
+                echo '⏳ Waiting 90 seconds for EC2 to initialize...'
+                bat 'timeout /t 90'
+
+                script {
+                    dir('terraform') {
+                        def publicIp = bat(script: "\"%TERRAFORM%\" output -raw ec2_public_ip", returnStdout: true).trim()
+                        echo "🌍 EC2 Public IP: ${publicIp}"
+
+                        echo "🔎 Checking website health..."
+                        bat "curl -I http://${publicIp}"
                     }
                 }
             }
         }
     }
+
     post {
+        success {
+            echo '✅ Docker image pushed, EC2 deployed, and website is running!'
+            echo '🎉 Open the site in your browser using the EC2 Public IP or DNS.'
+        }
         failure {
             echo '❌ Build or deployment failed!'
-        }
-        success {
-            echo '🎉 Website deployed successfully!'
         }
     }
 }
 pipeline {
     agent any
+
     environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key')  // Jenkins credentials
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
+        IMAGE_NAME = "vjagvi/college-website"
+        ECR_REPO = "387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website"
+        REGION = "us-east-1"
+        AWS_CLI = "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe"
+        TERRAFORM = "C:\\terraform_1.13.3_windows_386\\terraform.exe"
     }
+
     stages {
+        stage('Clone Repository') {
+            steps {
+                echo '📦 Cloning repository...'
+                git branch: 'main', url: 'https://github.com/vJagvi/CollegeWebsite.git'
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
-                echo '📦 Building Docker image...'
-                sh 'docker build -t vjagvi/college-website:latest .'
+                echo '🐳 Building Docker image...'
+                bat 'docker build -t %IMAGE_NAME%:latest .'
             }
         }
-        stage('Tag & Push to ECR') {
+
+        stage('Push to AWS ECR') {
             steps {
-                echo '🚀 Pushing Docker image to AWS ECR...'
-                sh '''
-                    docker tag vjagvi/college-website:latest 387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website:latest
-                    aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 387056640483.dkr.ecr.us-east-1.amazonaws.com
-                    docker push 387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website:latest
-                '''
-            }
-        }
-        stage('Deploy with Terraform') {
-            steps {
-                echo '🏗️ Deploying EC2 instance and website...'
-                dir('Terraform') {
-                    sh 'terraform init'
-                    sh 'terraform apply -auto-approve -var "key_name=my-keypair" -var "ecr_repo_url=387056640483.dkr.ecr.us-east-1.amazonaws.com/college-website:latest"'
+                echo '🚀 Pushing image to AWS ECR...'
+                withCredentials([usernamePassword(credentialsId: 'aws-ecr-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    bat """
+                    set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                    set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+                    "%AWS_CLI%" ecr get-login-password --region %REGION% | docker login --username AWS --password-stdin %ECR_REPO%
+                    docker tag %IMAGE_NAME%:latest %ECR_REPO%:latest
+                    docker push %ECR_REPO%:latest
+                    """
                 }
             }
         }
-        stage('Get Public IP & Website URL') {
+
+        stage('Deploy with Terraform') {
             steps {
-                dir('Terraform') {
-                    script {
-                        // Fetch the public IP from Terraform output
-                        def ec2IP = sh(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
-                        echo "🌐 Your website is live at: http://${ec2IP}"
-                        
-                        // Optional: Open in default browser (if Jenkins agent supports GUI)
-                        // bat "start http://${ec2IP}"  // Use on Windows agent
-                        // sh "xdg-open http://${ec2IP}" // Use on Linux agent
+                echo '🏗️ Deploying EC2 instance and running Docker container...'
+                withCredentials([usernamePassword(credentialsId: 'aws-ecr-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    dir('terraform') {
+                        bat """
+                        set AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID%
+                        set AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY%
+                        "%TERRAFORM%" init
+                        "%TERRAFORM%" apply -auto-approve
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Wait for EC2 and Check Website') {
+            steps {
+                echo '⏳ Waiting 90 seconds for EC2 to initialize...'
+                bat 'timeout /t 90'
+
+                script {
+                    dir('terraform') {
+                        def publicIp = bat(script: "\"%TERRAFORM%\" output -raw ec2_public_ip", returnStdout: true).trim()
+                        echo "🌍 EC2 Public IP: ${publicIp}"
+
+                        echo "🔎 Checking website health..."
+                        bat "curl -I http://${publicIp}"
                     }
                 }
             }
         }
     }
+
     post {
+        success {
+            echo '✅ Docker image pushed, EC2 deployed, and website is running!'
+            echo '🎉 Open the site in your browser using the EC2 Public IP or DNS.'
+        }
         failure {
             echo '❌ Build or deployment failed!'
-        }
-        success {
-            echo '🎉 Website deployed successfully!'
         }
     }
 }

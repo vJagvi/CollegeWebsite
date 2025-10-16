@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 # ------------------------------
-# IAM Role for EC2 to Access ECR & SSM
+# IAM Role for EC2 to Access ECR
 # ------------------------------
 resource "aws_iam_role" "ec2_role" {
   name = "ec2-ecr-access-role"
@@ -27,7 +27,7 @@ resource "aws_iam_role_policy_attachment" "ecr_readonly_attach" {
 
 resource "aws_iam_role_policy_attachment" "ssm_attach" {
   role       = aws_iam_role.ec2_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2RoleforSSM"
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
@@ -64,7 +64,7 @@ resource "aws_security_group" "web_sg" {
   }
 
   tags = {
-    Name = var.security_group_name
+    Name = "jenkins-ec2-sg"
   }
 }
 
@@ -91,29 +91,29 @@ data "aws_ami" "amazon_linux" {
 # EC2 Instance
 # ------------------------------
 resource "aws_instance" "web" {
-  ami                 = data.aws_ami.amazon_linux.id
-  instance_type       = var.instance_type
-  key_name            = var.key_name
-  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
-  security_groups     = [aws_security_group.web_sg.name]
+  ami                    = data.aws_ami.amazon_linux.id
+  instance_type           = var.instance_type
+  key_name                = var.key_name
+  iam_instance_profile    = aws_iam_instance_profile.ec2_profile.name
+  security_groups         = [aws_security_group.web_sg.name]
 
   user_data = <<-EOF
-    #!/bin/bash
-    yum update -y
-    amazon-linux-extras install docker -y
-    systemctl enable docker
-    systemctl start docker
-    usermod -a -G docker ec2-user
+              #!/bin/bash
+              yum update -y
+              amazon-linux-extras install docker -y
+              systemctl enable docker
+              systemctl start docker
+              usermod -a -G docker ec2-user
 
-    # Login to ECR and pull image
-    REGION=${var.region}
-    REPO=${var.ecr_repo_url}
-    aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO
-    docker pull $REPO
+              # Login to ECR and pull image
+              REGION=${var.region}
+              REPO=${var.ecr_repo_url}
+              aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO
+              docker pull $REPO
 
-    # Run container
-    docker run -d -p 80:80 $REPO
-  EOF
+              # Run container
+              docker run -d -p 80:80 $REPO
+              EOF
 
   tags = {
     Name = "CollegeWebsite-EC2"
