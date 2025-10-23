@@ -56,6 +56,7 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Monitoring ports for Prometheus stack
   ingress {
     from_port   = 8080
     to_port     = 8080
@@ -112,49 +113,46 @@ data "aws_ami" "amazon_linux" {
 # EC2 Instance
 # ------------------------------
 resource "aws_instance" "web" {
-  ami                    = data.aws_ami.amazon_linux.id
-  instance_type           = var.instance_type
-  key_name                = var.key_name
-  iam_instance_profile    = aws_iam_instance_profile.ec2_profile.name
-  security_groups         = [aws_security_group.web_sg.name]
+  ami                  = data.aws_ami.amazon_linux.id
+  instance_type        = var.instance_type
+  key_name             = var.key_name
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+  security_groups      = [aws_security_group.web_sg.name]
 
-  # ------------------------------
-  # Copy prometheus.yml from local to EC2
-  # ------------------------------
+  # SSH connection for file provisioner
+  connection {
+    type        = "ssh"
+    user        = "ec2-user"
+    private_key = file("C:/Users/Venkat/Downloads/my-keypair.pem")
+    host        = self.public_ip
+  }
+
+  # Copy Prometheus config file to EC2
   provisioner "file" {
-    source      = "prometheus.yml"           # Path in your local repo
+    source      = "prometheus.yml"
     destination = "/home/ec2-user/prometheus/prometheus.yml"
   }
 
   user_data = <<-EOF
               #!/bin/bash
-              # Update and install Docker
               yum update -y
               amazon-linux-extras install docker -y
-
-              # Enable Docker on boot
               systemctl enable docker
               systemctl start docker
-
-              # Add ec2-user to Docker group
               usermod -a -G docker ec2-user
-
               sleep 10
 
               REGION=${var.region}
               REPO=${var.ecr_repo_url}
 
-              # ECR login and pull website image
               aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO
               docker pull $REPO
 
-              # Stop and remove existing website container
               if [ $(docker ps -q -f name=college-website) ]; then
                 docker stop college-website
                 docker rm college-website
               fi
 
-              # Run website container
               docker run -d --name college-website -p 80:80 $REPO
 
               # ------------------------------
