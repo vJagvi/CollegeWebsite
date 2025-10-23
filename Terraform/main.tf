@@ -56,7 +56,6 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Monitoring ports for Prometheus stack
   ingress {
     from_port   = 8080
     to_port     = 8080
@@ -119,6 +118,14 @@ resource "aws_instance" "web" {
   iam_instance_profile    = aws_iam_instance_profile.ec2_profile.name
   security_groups         = [aws_security_group.web_sg.name]
 
+  # ------------------------------
+  # Copy prometheus.yml from local to EC2
+  # ------------------------------
+  provisioner "file" {
+    source      = "prometheus.yml"           # Path in your local repo
+    destination = "/home/ec2-user/prometheus/prometheus.yml"
+  }
+
   user_data = <<-EOF
               #!/bin/bash
               # Update and install Docker
@@ -132,24 +139,49 @@ resource "aws_instance" "web" {
               # Add ec2-user to Docker group
               usermod -a -G docker ec2-user
 
-              # Wait for Docker to start
               sleep 10
 
-              # ECR login, pull image, and run container
               REGION=${var.region}
               REPO=${var.ecr_repo_url}
 
+              # ECR login and pull website image
               aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO
               docker pull $REPO
 
-              # Stop existing container if any
+              # Stop and remove existing website container
               if [ $(docker ps -q -f name=college-website) ]; then
                 docker stop college-website
                 docker rm college-website
               fi
 
-              # Run container
+              # Run website container
               docker run -d --name college-website -p 80:80 $REPO
+
+              # ------------------------------
+              # Node Exporter
+              # ------------------------------
+              docker rm -f node_exporter || true
+              docker run -d --name node_exporter --network=host prom/node-exporter
+
+              # ------------------------------
+              # cAdvisor
+              # ------------------------------
+              docker rm -f cadvisor || true
+              docker run -d --name cadvisor \
+                --volume=/:/rootfs:ro \
+                --volume=/var/run:/var/run:rw \
+                --volume=/sys:/sys:ro \
+                --volume=/var/lib/docker/:/var/lib/docker:ro \
+                -p 8080:8080 gcr.io/cadvisor/cadvisor:latest
+
+              # ------------------------------
+              # Prometheus
+              # ------------------------------
+              mkdir -p /home/ec2-user/prometheus
+              docker rm -f prometheus || true
+              docker run -d --name prometheus -p 9090:9090 \
+                -v /home/ec2-user/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml \
+                prom/prometheus
               EOF
 
   tags = {
