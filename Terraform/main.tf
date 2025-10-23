@@ -40,7 +40,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 # ------------------------------
 resource "aws_security_group" "web_sg" {
   name        = var.security_group_name
-  description = "Allow HTTP and SSH"
+  description = "Allow HTTP, SSH, and Monitoring Ports"
 
   ingress {
     from_port   = 22
@@ -52,6 +52,28 @@ resource "aws_security_group" "web_sg" {
   ingress {
     from_port   = 80
     to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Monitoring ports for Prometheus stack
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 9100
+    to_port     = 9100
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }

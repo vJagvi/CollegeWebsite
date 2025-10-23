@@ -55,13 +55,41 @@ pipeline {
             }
         }
 
-        
+        stage('Run Monitoring Containers') {
+            steps {
+                echo '📊 Starting Prometheus, Node Exporter, and cAdvisor...'
+                bat """
+                REM Stop existing monitoring containers if running
+                docker rm -f prometheus || exit 0
+                docker rm -f node_exporter || exit 0
+                docker rm -f cadvisor || exit 0
+
+                REM Run Node Exporter
+                docker run -d --name node_exporter --network=host prom/node-exporter
+
+                REM Run cAdvisor
+                docker run -d --name cadvisor ^
+                    --volume=/:/rootfs:ro ^
+                    --volume=/var/run:/var/run:rw ^
+                    --volume=/sys:/sys:ro ^
+                    --volume=/var/lib/docker/:/var/lib/docker:ro ^
+                    -p 8080:8080 gcr.io/cadvisor/cadvisor:latest
+
+                REM Run Prometheus
+                docker run -d --name prometheus ^
+                    -p 9090:9090 ^
+                    -v %WORKSPACE%\\prometheus\\prometheus.yml:/etc/prometheus/prometheus.yml ^
+                    prom/prometheus
+                """
+            }
+        }
     }
 
     post {
         success {
-            echo '✅ Docker image pushed, EC2 deployed, and website is running!'
-            echo '🎉 Open the site in your browser using the EC2 Public IP or DNS.'
+            echo '✅ Docker image pushed, EC2 deployed, website and monitoring stack are running!'
+            echo '🎉 Access Prometheus at http://<EC2_PUBLIC_IP>:9090'
+            echo '🎉 Access cAdvisor at http://<EC2_PUBLIC_IP>:8080'
         }
         failure {
             echo '❌ Build or deployment failed!'
