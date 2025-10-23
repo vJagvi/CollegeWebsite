@@ -129,9 +129,10 @@ resource "aws_instance" "web" {
 
   # Copy Prometheus config file to EC2
   provisioner "file" {
-    source      = "prometheus.yml"
-    destination = "/home/ec2-user/prometheus/prometheus.yml"
-  }
+  source      = "../prometheus/prometheus.yml"
+  destination = "/home/ec2-user/prometheus/prometheus.yml"
+}
+
 
   user_data = <<-EOF
               #!/bin/bash
