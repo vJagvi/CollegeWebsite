@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 # ------------------------------
-# IAM Role for EC2 to Access ECR
+# IAM Role for EC2 to Access ECR + SSM
 # ------------------------------
 resource "aws_iam_role" "ec2_role" {
   name = "ec2-ecr-access-role"
@@ -18,7 +18,6 @@ resource "aws_iam_role" "ec2_role" {
       }
     }]
   })
-  
 }
 
 resource "aws_iam_role_policy_attachment" "ecr_readonly_attach" {
@@ -71,7 +70,6 @@ resource "aws_security_group" "web_sg" {
   lifecycle {
     prevent_destroy = true
   }
-
 }
 
 # ------------------------------
@@ -99,47 +97,68 @@ data "aws_ami" "amazon_linux" {
 resource "aws_instance" "web" {
   ami                    = data.aws_ami.amazon_linux.id
   instance_type           = var.instance_type
-  #key_name                = var.key_name
   iam_instance_profile    = aws_iam_instance_profile.ec2_profile.name
   security_groups         = [aws_security_group.web_sg.name]
 
   user_data = <<-EOF
               #!/bin/bash
-              # Update and install Docker
               yum update -y
               amazon-linux-extras install docker -y
-
-              # Enable Docker on boot
               systemctl enable docker
               systemctl start docker
-
-              # Add ec2-user to Docker group
               usermod -a -G docker ec2-user
 
-              # Wait for Docker to start
               sleep 10
 
-              # ECR login, pull image, and run container
               REGION=${var.region}
               REPO=${var.ecr_repo_url}
 
               aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO
               docker pull $REPO
 
-              # Stop existing container if any
               if [ $(docker ps -q -f name=college-website) ]; then
                 docker stop college-website
                 docker rm college-website
               fi
 
-              # Run container
               docker run -d --name college-website -p 80:80 $REPO
               EOF
 
   tags = {
     Name = "CollegeWebsite-EC2"
   }
+
   lifecycle {
-    create_before_destroy = true
+    # Keep the same EC2 instance, don’t recreate
+    ignore_changes = [ami, user_data]
   }
+}
+
+# ------------------------------
+# SSM Command to Update Container on Each Apply
+# ------------------------------
+resource "null_resource" "update_container_via_ssm" {
+  # Force run every terraform apply
+  triggers = {
+    always_run = timestamp()
+  }
+
+  provisioner "local-exec" {
+    command = <<EOT
+      aws ssm send-command \
+        --region ${var.region} \
+        --instance-ids ${aws_instance.web.id} \
+        --document-name "AWS-RunShellScript" \
+        --comment "Terraform triggered Docker update from ECR" \
+        --parameters 'commands=[
+          "aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${var.ecr_repo_url}",
+          "docker pull ${var.ecr_repo_url}",
+          "docker stop college-website || true",
+          "docker rm college-website || true",
+          "docker run -d --name college-website -p 80:80 ${var.ecr_repo_url}"
+        ]'
+    EOT
+  }
+
+  depends_on = [aws_instance.web]
 }
