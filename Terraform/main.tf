@@ -18,6 +18,10 @@ resource "aws_iam_role" "ec2_role" {
       }
     }]
   })
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = [assume_role_policy]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "ecr_readonly_attach" {
@@ -40,7 +44,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 # ------------------------------
 resource "aws_security_group" "web_sg" {
   name        = var.security_group_name
-  description = "Allow HTTP, SSH, and Monitoring Ports"
+  description = "Allow HTTP and SSH"
 
   ingress {
     from_port   = 22
@@ -52,28 +56,6 @@ resource "aws_security_group" "web_sg" {
   ingress {
     from_port   = 80
     to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Monitoring ports for Prometheus stack
-  ingress {
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 9090
-    to_port     = 9090
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 9100
-    to_port     = 9100
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -113,74 +95,43 @@ data "aws_ami" "amazon_linux" {
 # EC2 Instance
 # ------------------------------
 resource "aws_instance" "web" {
-  ami                  = data.aws_ami.amazon_linux.id
-  instance_type        = var.instance_type
-  key_name             = var.key_name
-  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
-  security_groups      = [aws_security_group.web_sg.name]
-
-  # SSH connection for file provisioner
-  connection {
-    type        = "ssh"
-    user        = "ec2-user"
-    private_key = file("C:/Users/Venkat/Downloads/my-keypair.pem")
-    host        = self.public_ip
-  }
-
-  # Copy Prometheus config file to EC2
-  provisioner "file" {
-  source      = "../prometheus/prometheus.yml"
-  destination = "/home/ec2-user/prometheus/prometheus.yml"
-}
-
+  ami                    = data.aws_ami.amazon_linux.id
+  instance_type           = var.instance_type
+  #key_name                = var.key_name
+  iam_instance_profile    = aws_iam_instance_profile.ec2_profile.name
+  security_groups         = [aws_security_group.web_sg.name]
 
   user_data = <<-EOF
               #!/bin/bash
+              # Update and install Docker
               yum update -y
               amazon-linux-extras install docker -y
+
+              # Enable Docker on boot
               systemctl enable docker
               systemctl start docker
+
+              # Add ec2-user to Docker group
               usermod -a -G docker ec2-user
+
+              # Wait for Docker to start
               sleep 10
 
+              # ECR login, pull image, and run container
               REGION=${var.region}
               REPO=${var.ecr_repo_url}
 
               aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO
               docker pull $REPO
 
+              # Stop existing container if any
               if [ $(docker ps -q -f name=college-website) ]; then
                 docker stop college-website
                 docker rm college-website
               fi
 
+              # Run container
               docker run -d --name college-website -p 80:80 $REPO
-
-              # ------------------------------
-              # Node Exporter
-              # ------------------------------
-              docker rm -f node_exporter || true
-              docker run -d --name node_exporter --network=host prom/node-exporter
-
-              # ------------------------------
-              # cAdvisor
-              # ------------------------------
-              docker rm -f cadvisor || true
-              docker run -d --name cadvisor \
-                --volume=/:/rootfs:ro \
-                --volume=/var/run:/var/run:rw \
-                --volume=/sys:/sys:ro \
-                --volume=/var/lib/docker/:/var/lib/docker:ro \
-                -p 8080:8080 gcr.io/cadvisor/cadvisor:latest
-
-              # ------------------------------
-              # Prometheus
-              # ------------------------------
-              mkdir -p /home/ec2-user/prometheus
-              docker rm -f prometheus || true
-              docker run -d --name prometheus -p 9090:9090 \
-                -v /home/ec2-user/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml \
-                prom/prometheus
               EOF
 
   tags = {
