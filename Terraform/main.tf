@@ -122,22 +122,30 @@ resource "aws_instance" "web" {
 }
 
 # ------------------------------
-# Trigger Container Update via SSM
+# Trigger Container Update via SSM (Windows Jenkins Safe)
 # ------------------------------
 resource "null_resource" "update_container_via_ssm" {
-  # re-run every apply (forces container refresh)
   triggers = {
     always_run = timestamp()
   }
 
   provisioner "local-exec" {
-    command = <<EOT
-aws ssm send-command ^
-  --region ${var.region} ^
-  --instance-ids ${aws_instance.web.id} ^
-  --document-name "AWS-RunShellScript" ^
-  --comment "Terraform triggered Docker update from ECR" ^
-  --parameters "{\\"commands\\":[\\"aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${var.ecr_repo_url}:latest\\",\\"docker pull ${var.ecr_repo_url}:latest\\",\\"docker stop college-website || true\\",\\"docker rm college-website || true\\",\\"docker run -d --name college-website -p 80:80 ${var.ecr_repo_url}:latest\\"]}"
-EOT
+    interpreter = ["PowerShell", "-Command"]
+    command = <<-EOT
+      $CommandFile = "update_container.ps1"
+      $CommandText = @'
+aws ssm send-command `
+  --region ${var.region} `
+  --instance-ids ${aws_instance.web.id} `
+  --document-name "AWS-RunShellScript" `
+  --comment "Terraform triggered Docker update from ECR" `
+  --parameters '{"commands":["aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${var.ecr_repo_url}:latest","docker pull ${var.ecr_repo_url}:latest","docker stop college-website || true","docker rm college-website || true","docker run -d --name college-website -p 80:80 ${var.ecr_repo_url}:latest"]}'
+'@
+
+      Set-Content -Path $CommandFile -Value $CommandText
+      Write-Host "✅ Executing PowerShell SSM command file..."
+      powershell -ExecutionPolicy Bypass -File $CommandFile
+    EOT
   }
 }
+
