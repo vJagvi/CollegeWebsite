@@ -20,6 +20,7 @@ resource "aws_iam_role" "ec2_role" {
   })
 }
 
+# Attach policies
 resource "aws_iam_role_policy_attachment" "ecr_readonly_attach" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
@@ -30,6 +31,7 @@ resource "aws_iam_role_policy_attachment" "ssm_attach" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+# Instance profile
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "ec2-instance-profile"
   role = aws_iam_role.ec2_role.name
@@ -92,13 +94,13 @@ data "aws_ami" "amazon_linux" {
 }
 
 # ------------------------------
-# EC2 Instance
+# EC2 Instance (One-time setup)
 # ------------------------------
 resource "aws_instance" "web" {
-  ami                    = data.aws_ami.amazon_linux.id
-  instance_type           = var.instance_type
-  iam_instance_profile    = aws_iam_instance_profile.ec2_profile.name
-  security_groups         = [aws_security_group.web_sg.name]
+  ami                  = data.aws_ami.amazon_linux.id
+  instance_type        = var.instance_type
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+  security_groups      = [aws_security_group.web_sg.name]
 
   user_data = <<-EOF
               #!/bin/bash
@@ -107,58 +109,35 @@ resource "aws_instance" "web" {
               systemctl enable docker
               systemctl start docker
               usermod -a -G docker ec2-user
-
-              sleep 10
-
-              REGION=${var.region}
-              REPO=${var.ecr_repo_url}
-
-              aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO
-              docker pull $REPO
-
-              if [ $(docker ps -q -f name=college-website) ]; then
-                docker stop college-website
-                docker rm college-website
-              fi
-
-              docker run -d --name college-website -p 80:80 $REPO
               EOF
 
   tags = {
     Name = "CollegeWebsite-EC2"
   }
 
+  # Don’t recreate instance when AMI or user_data changes
   lifecycle {
-    # Keep the same EC2 instance, don’t recreate
     ignore_changes = [ami, user_data]
   }
 }
 
 # ------------------------------
-# SSM Command to Update Container on Each Apply
+# Trigger Container Update via SSM
 # ------------------------------
 resource "null_resource" "update_container_via_ssm" {
-  # Force run every terraform apply
+  # re-run every apply (forces container refresh)
   triggers = {
     always_run = timestamp()
   }
 
   provisioner "local-exec" {
     command = <<EOT
-      aws ssm send-command \
-        --region ${var.region} \
-        --instance-ids ${aws_instance.web.id} \
-        --document-name "AWS-RunShellScript" \
-        --comment "Terraform triggered Docker update from ECR" \
-        --parameters 'commands=[
-          "aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${var.ecr_repo_url}",
-          "docker pull ${var.ecr_repo_url}",
-          "docker stop college-website || true",
-          "docker rm college-website || true",
-          "docker run -d --name college-website -p 80:80 ${var.ecr_repo_url}"
-        ]'
-    EOT
+aws ssm send-command ^
+  --region ${var.region} ^
+  --instance-ids ${aws_instance.web.id} ^
+  --document-name "AWS-RunShellScript" ^
+  --comment "Terraform triggered Docker update from ECR" ^
+  --parameters "{\\"commands\\":[\\"aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${var.ecr_repo_url}:latest\\",\\"docker pull ${var.ecr_repo_url}:latest\\",\\"docker stop college-website || true\\",\\"docker rm college-website || true\\",\\"docker run -d --name college-website -p 80:80 ${var.ecr_repo_url}:latest\\"]}"
+EOT
   }
-
-  depends_on = [aws_instance.web]
 }
