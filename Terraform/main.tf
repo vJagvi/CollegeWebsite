@@ -132,20 +132,23 @@ resource "null_resource" "update_container_via_ssm" {
   provisioner "local-exec" {
     interpreter = ["PowerShell", "-Command"]
     command = <<-EOT
-      $CommandFile = "update_container.ps1"
-      $CommandText = @'
-aws ssm send-command `
-  --region ${var.region} `
-  --instance-ids ${aws_instance.web.id} `
-  --document-name "AWS-RunShellScript" `
-  --comment "Terraform triggered Docker update from ECR" `
-  --parameters '{"commands":["aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${var.ecr_repo_url}:latest","docker pull ${var.ecr_repo_url}:latest","docker stop college-website || true","docker rm college-website || true","docker run -d --name college-website -p 80:80 ${var.ecr_repo_url}:latest"]}'
-'@
+      $commands = @(
+        "aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${var.ecr_repo_url}:latest",
+        "docker pull ${var.ecr_repo_url}:latest",
+        "docker stop college-website || true",
+        "docker rm college-website || true",
+        "docker run -d --name college-website -p 80:80 ${var.ecr_repo_url}:latest"
+      )
 
-      Set-Content -Path $CommandFile -Value $CommandText
-      Write-Host "✅ Executing PowerShell SSM command file..."
-      powershell -ExecutionPolicy Bypass -File $CommandFile
+      $params = @{ commands = $commands } | ConvertTo-Json -Compress
+
+      Write-Host "✅ Triggering SSM to update Docker container..."
+      aws ssm send-command `
+        --region ${var.region} `
+        --instance-ids ${aws_instance.web.id} `
+        --document-name "AWS-RunShellScript" `
+        --comment "Terraform-triggered Docker update from ECR" `
+        --parameters $params
     EOT
   }
 }
-
