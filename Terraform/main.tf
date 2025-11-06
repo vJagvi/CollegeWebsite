@@ -18,10 +18,7 @@ resource "aws_iam_role" "ec2_role" {
       }
     }]
   })
-  lifecycle {
-    prevent_destroy = true
-    ignore_changes  = [assume_role_policy]
-  }
+  
 }
 
 resource "aws_iam_role_policy_attachment" "ecr_readonly_attach" {
@@ -70,6 +67,11 @@ resource "aws_security_group" "web_sg" {
   tags = {
     Name = "jenkins-ec2-sg"
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
 }
 
 # ------------------------------
@@ -136,5 +138,8 @@ resource "aws_instance" "web" {
 
   tags = {
     Name = "CollegeWebsite-EC2"
+  }
+  lifecycle {
+    create_before_destroy = true
   }
 }
